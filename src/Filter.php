@@ -59,6 +59,9 @@ class Filter implements Filterable {
   public function __construct(...$filters) {
     try {
       foreach ($filters as $filter) {
+        if (! is_array($filter) || is_callable($filter)) {
+          $filter = [$filter];
+        }
         $this->_addFilter($filter);
       }
     } catch (Throwable $e) {
@@ -158,15 +161,11 @@ class Filter implements Filterable {
   /**
    * Adds a filter to the definition.
    *
-   * @param
+   * @param array $filter  definition for the filter to add
    */
-  protected function _addFilter() {
+  protected function _addFilter(array $filter) {
     if (is_a(reset($filter), Filterable::class, true)) {
       $filter = Perk::createFilter(...$filter);
-    }
-
-    if (! is_array($filter) || is_callable($filter)) {
-      $filter = [$filter];
     }
 
     $this->_filters[] = $filter;

@@ -21,11 +21,57 @@ declare(strict_types = 1);
 namespace at\perk;
 
 use at\perk\ {
-  Filterable,
   Filter,
+  Filterable,
+  FilterException,
   FilterMap,
-  Filters\Text,
-  Filters\Type
+
+  Filter\Compare\Between,
+  Filter\Compare\Equal,
+  Filter\Compare\From,
+  Filter\Compare\Greater,
+  Filter\Compare\Less,
+  Filter\Compare\Within,
+
+  Filter\Logic\All,
+  Filter\Logic\AllIf,
+  Filter\Logic\AllUnless,
+  Filter\Logic\Always,
+  Filter\Logic\Any,
+  Filter\Logic\AtLeast,
+  Filter\Logic\AtMost,
+  Filter\Logic\Never,
+  Filter\Logic\None,
+  Filter\Logic\Not,
+  Filter\Logic\One,
+
+  Filter\Number\FromBase,
+  Filter\Number\Modulo,
+  Filter\Number\Serial,
+  Filter\Number\ToBase,
+
+  Filter\Text\Ascii,
+  Filter\Text\Email,
+  Filter\Text\Length,
+  Filter\Text\ByteLength,
+  Filter\Text\Match,
+  Filter\Text\Printable,
+  Filter\Text\Url,
+  Filter\Text\Utf8,
+
+  Filter\Time\After,
+  Filter\Time\Around,
+  Filter\Time\At,
+  Filter\Time\Before,
+  Filter\Time\During,
+
+  Filter\Type\Is,
+  Filter\Type\ToArray,
+  Filter\Type\ToBool,
+  Filter\Type\ToDateTime,
+  Filter\Type\ToFloat,
+  Filter\Type\ToInt,
+  Filter\Type\ToString
 };
 
 /**
@@ -34,54 +80,58 @@ use at\perk\ {
 class Perk {
 
   /**
-   * Aliases for composable filters and logical filter structures.
+   * Aliases for logical filter structures.
    *
-   * @type callable ALL       passes if all rules pass.
-   * @type callable ANY       passes if any rule passes.
-   * @type callable AT_LEAST  passes if at least N rules pass.
-   * @type callable AT_MOST   passes if at most N rules pass.
-   * @type callable EXACTLY   passes if exactly N rules pass.
-   * @type callable IF        passes if the first rule fails, or if all other rules pass.
-   * @type callable NONE      passes if all rules fail.
-   * @type callable ONE       passes if exactly one rule passes.
-   * @type callable UNLESS    passes if the first rule passes, or if all other rules pass.
+   * @type string ALL       passes if all rules pass.
+   * @type string ALLWAYS   always passes.
+   * @type string ANY       passes if any rule passes.
+   * @type string AT_LEAST  passes if at least N rules pass.
+   * @type string AT_MOST   passes if at most N rules pass.
+   * @type string EXACTLY   passes if exactly N rules pass.
+   * @type string IF        passes if the first rule fails, or if all other rules pass.
+   * @type string NEVER     always fails.
+   * @type string NONE      passes if all rules fail.
+   * @type string NOT       alias of NONE.
+   * @type string ONE       passes if exactly one rule passes.
+   * @type string UNLESS    passes if the first rule passes, or if all other rules pass.
    */
-  const ALL = [Composable::class, 'all'];
-  const ANY = [Composable::class, 'any'];
-  const AT_LEAST = [Composable::class, 'atLeast'];
-  const AT_MOST = [Composable::class, 'atMost'];
-  const IF = [Composable::class, 'if'];
-  const NONE = [Composable::class, 'none'];
-  const ONE = [Composable::class, 'one'];
-  const UNLESS = [Composable::class, 'unless'];
+  const ALL = All::class;
+  const ALLWAYS = Allways::class;
+  const ANY = Any::class;
+  const AT_LEAST = AtLeast::class;
+  const AT_MOST = AtMost::class;
+  const IF = AllIf::class;
+  const NEVER = Never::class;
+  const NONE = None::class;
+  const NOT = None::class;
+  const ONE = One::class;
+  const UNLESS = AllUnless::class;
 
   /**
    * Aliases for php datatype/class/interface filters.
-   * @see Type
    *
-   * @type callable ARRAY   passes if value can be converted to array.
-   * @type int      BOOL    passes if value can be converted to boolean.
-   * @type int      FLOAT   passes if value can be converted to float.
-   * @type int      INT     passes if value can be converted to integer.
-   * @type callable IS      passes if value is of given class, type, or psuedotype.
-   * @type int      STRING  passes if value can be converted to string.
+   * @type string ARRAY     passes if value can be converted to array.
+   * @type string BOOL      passes if value can be converted to boolean.
+   * @type string FLOAT     passes if value can be converted to float.
+   * @type string INT       passes if value can be converted to integer.
+   * @type string IS        passes if value is of given class, type, or psuedotype.
+   * @type string STRING    passes if value can be converted to string.
    */
-  public const ARRAY = [Type::class, 'array'];
-  public const BOOL = FILTER_VALIDATE_BOOLEAN;
-  public const FLOAT = FILTER_VALIDATE_FLOAT;
-  public const INT = FILTER_VALIDATE_INT;
-  public const IS = [Type::class, 'is'];
-  public const STRING = FILTER_UNSAFE_RAW;
+  public const ARRAY = ToArray::class;
+  public const BOOL = ToBool::class;
+  public const FLOAT = ToFloat::class;
+  public const INT = ToInt::class;
+  public const IS = Is::class;
+  public const STRING = ToString::class;
 
   /**
    * Aliases for text filters.
-   * @see Text
    *
-   * MATCH  passes if value matches given pcre.
-   * UTF8   passes if value can be converted+normalized as utf-8.
+   * @type string MATCH  passes if value matches given pcre.
+   * @type string UTF8   passes if value can be converted+normalized as utf-8.
    */
-  public const MATCH = [Text::class, 'match'];
-  public const UTF8 = [Text::class, 'normalizeUtf8'];
+  public const MATCH = Match::class;
+  public const UTF8 = Utf8::class;
 
   /**
    * Aliases for number filters.
@@ -100,24 +150,28 @@ class Perk {
    *  - string classname|type|pseudotype
    *  - int FILTER_* constant
    *
-   * @param mixed ...$filters  filter definitions
-   * @retun Filter             on success
-   * @throws FilterException   on failure
+   * @param mixed $filter     filter definitions
+   * @retun Filter            on success
+   * @throws FilterException  on failure
    */
-  public static function createFilter(...$filters) : Filterable {
-    $fqcn = is_a(reset($filters), Filterable::class, true) ?
-      array_shift($filters) :
+  public static function createFilter($filter) : Filterable {
+    if (! is_array($filter) || is_callable($filter)) {
+      $filter = [$filter];
+    }
+
+    $fqcn = is_a(reset($filter), Filterable::class, true) ?
+      array_shift($filter) :
       Filter::class;
 
     try {
-      return new $fqcn(...$filters);
+      return new $fqcn(...$filter);
     } catch (FilterException $e) {
       throw $e;
     } catch (Throwable $e) {
       throw new FilterException(
         FilterException::INVALID_FILTER_DEFINITION,
         $e,
-        ['filter' => $fqcn, 'definition' => $filters]
+        ['filter' => $fqcn, 'definition' => $filter]
       );
     }
   }
@@ -136,13 +190,27 @@ class Perk {
   /**
    * Creates and applies a filter.
    *
-   * @param mixed $value         vlaue to filter
+   * @param mixed $value         value to filter
    * @param mixed $filter        filter definition
    * @param mixed ...$arguments  filter args
    * @return mixed               filtered value
+   * @throws FilterException     on failure
    */
   public static function filter($value, $filter, ...$arguments) {
     return self::createFilter($filter)->apply($value, ...$arguments);
+  }
+
+  /**
+   * Creates a filter and applies it to each of a list of values.
+   *
+   * @param mixed[] $values        list of values to filter
+   * @param mixed   $filter        filter definition
+   * @param mixed   ...$arguments  filter args
+   * @return mixed[]               filtered values
+   * @throws FilterException       on failure
+   */
+  public static function filterEach(array $values, $filter, ...$arguments) : array {
+    return self::createFilter($filter)->each($values, ...$arguments);
   }
 
   /**
@@ -152,6 +220,7 @@ class Perk {
    * @param mixed[] $filters     map of filter definition
    * @param mixed ...$arguments  filter args
    * @return mixed[]             filtered values
+   * @throws FilterException     on failure
    */
   public static function filterMap(array $values, array $filters, ...$arguments) : array {
     return self::createFilterMap($filters)->apply($values, ...$arguments);
