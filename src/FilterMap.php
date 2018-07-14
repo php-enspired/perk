@@ -18,7 +18,7 @@
  */
 declare(strict_types = 1);
 
-namespace at\perk\Filters;
+namespace at\perk;
 
 use at\perk\ {
   Filter,
@@ -30,6 +30,9 @@ use at\perk\ {
  * Composite filters which can be mapped (by name) to a collection of values.
  */
 class FilterMap extends Filter {
+
+  /** @type array[]  list of filter definitions. */
+  protected $_filters = [];
 
   /**
    * @param array $filterMap  map of name:filter definition pairs.
@@ -76,26 +79,30 @@ class FilterMap extends Filter {
    * The value given is expected to be an array,
    * with keys that match the names of this instance's filters.
    */
-  public function apply($values, ...$arguments) : array {
+  protected function _applyFilter($values) : array {
     if (! is_iterable($values)) {
       $values = [$values];
     }
 
+    $filters = $this->_getFilters();
     $filtered = [];
     foreach ($values as $key => $value) {
       if (! isset($filters[$key])) {
         throw new FilterException(FilterException::NO_MATCHING_FILTER, ['key' => $key]);
-      }
-      if (! $filters[$key] instanceof Filterable) {
-        throw new FilterException(
-          FilterException::INVALID_FILTER,
-          ['filter' => $filter, 'key' => $key]
-        );
       }
 
       $filtered[$key] = $filters[$key]->apply($value);
     }
 
     return $filtered;
+  }
+
+  /**
+   * Gets the filter definition.
+   *
+   * @return array[]  list of filter definitions
+   */
+  protected function _getFilters() : array {
+    return $this->_filters;
   }
 }

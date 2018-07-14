@@ -46,19 +46,24 @@ interface Filterable {
 
   /**
    * Applies this filter to the given value.
+   *
+   * @param mixed $value      the value to filter
+   * @param bool  $throw      throw on failure?
+   * @return ?mixed           filtered value on success; null otherwise
+   * @throws FilterException  on failure if $throw
    */
-  public function apply($value, ...$arguments);
+  public function apply($value, bool $throw = false);
 
   /**
    * Applies this filter to each of the given values.
    * Only values which pass the filter will be returned.
    *
-   * @param mixed[] $values        list of values to filter
-   * @param mixed   ...$arguments  additional arguments for the filter
-   * @return mixed[]               list of filtered values
-   * @thorws FilterException       on failure, if
+   * @param mixed[] $values   list of values to filter
+   * @param bool    $throw    throw on failure?
+   * @return mixed[]          (possibly empty) list of filtered values
+   * @throws FilterException  on failure, if $throw
    */
-  public function each(array $values, ...$arguments) : array;
+  public function applyEach(array $values, bool $throw = false) : array;
 
   /**
    * Gets information about the last value that failed the filter.
@@ -71,4 +76,25 @@ interface Filterable {
    *  - mixed  self::ERROR_VALUE    value that failed the filter
    */
   public function errorInfo() : array;
+
+  /**
+   * Applies this filter to the given value and inverts (negates) the result.
+   *
+   * @param mixed $value      the value to filter
+   * @param bool  $throw      throw on failure?
+   * @return ?mixed           initial value on failure; null otherwise
+   * @throws FilterException  on success, if $throw
+   */
+  public function invert($value, bool $throw = false);
+
+  /**
+   * Applies this filter to each of the given values and inverts the result
+   * (only values which fail the filter will be returned).
+   *
+   * @param mixed[] $values   list of values to filter
+   * @param bool    $throw    throw on failure?
+   * @return mixed[]          (possibly empty) list of initial values
+   * @throws FilterException  on success, if $throw
+   */
+  public function invertEach(array $values, bool $throw = false) : array;
 }

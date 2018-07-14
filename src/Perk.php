@@ -21,57 +21,55 @@ declare(strict_types = 1);
 namespace at\perk;
 
 use at\perk\ {
-  Filter,
+  Compare\Between,
+  Compare\Equal,
+  Compare\Greater,
+  Compare\Less,
+  Compare\OneOf,
+
   Filterable,
   FilterException,
   FilterMap,
+  IterativeFilter,
 
-  Filter\Compare\Between,
-  Filter\Compare\Equal,
-  Filter\Compare\From,
-  Filter\Compare\Greater,
-  Filter\Compare\Less,
-  Filter\Compare\Within,
+  Logic\All,
+  Logic\AllIf,
+  Logic\AllUnless,
+  Logic\Always,
+  Logic\Any,
+  Logic\AtLeast,
+  Logic\AtMost,
+  Logic\Never,
+  Logic\None,
+  Logic\One,
 
-  Filter\Logic\All,
-  Filter\Logic\AllIf,
-  Filter\Logic\AllUnless,
-  Filter\Logic\Always,
-  Filter\Logic\Any,
-  Filter\Logic\AtLeast,
-  Filter\Logic\AtMost,
-  Filter\Logic\Never,
-  Filter\Logic\None,
-  Filter\Logic\Not,
-  Filter\Logic\One,
+  Number\FromBase,
+  Number\Modulo,
+  Number\Serial,
+  Number\ToBase,
 
-  Filter\Number\FromBase,
-  Filter\Number\Modulo,
-  Filter\Number\Serial,
-  Filter\Number\ToBase,
+  Text\Ascii,
+  Text\Email,
+  Text\Length,
+  Text\ByteLength,
+  Text\Match,
+  Text\Printable,
+  Text\Url,
+  Text\Utf8,
 
-  Filter\Text\Ascii,
-  Filter\Text\Email,
-  Filter\Text\Length,
-  Filter\Text\ByteLength,
-  Filter\Text\Match,
-  Filter\Text\Printable,
-  Filter\Text\Url,
-  Filter\Text\Utf8,
+  Time\After,
+  Time\Around,
+  Time\At,
+  Time\Before,
+  Time\During,
 
-  Filter\Time\After,
-  Filter\Time\Around,
-  Filter\Time\At,
-  Filter\Time\Before,
-  Filter\Time\During,
-
-  Filter\Type\Is,
-  Filter\Type\ToArray,
-  Filter\Type\ToBool,
-  Filter\Type\ToDateTime,
-  Filter\Type\ToFloat,
-  Filter\Type\ToInt,
-  Filter\Type\ToString
+  Type\Is,
+  Type\ToArray,
+  Type\ToBool,
+  Type\ToDateTime,
+  Type\ToFloat,
+  Type\ToInt,
+  Type\ToString
 };
 
 /**
@@ -80,32 +78,47 @@ use at\perk\ {
 class Perk {
 
   /**
-   * Aliases for logical filter structures.
+   * Aliases for comparison filters.
    *
-   * @type string ALL       passes if all rules pass.
-   * @type string ALLWAYS   always passes.
-   * @type string ANY       passes if any rule passes.
-   * @type string AT_LEAST  passes if at least N rules pass.
-   * @type string AT_MOST   passes if at most N rules pass.
-   * @type string EXACTLY   passes if exactly N rules pass.
-   * @type string IF        passes if the first rule fails, or if all other rules pass.
-   * @type string NEVER     always fails.
-   * @type string NONE      passes if all rules fail.
-   * @type string NOT       alias of NONE.
-   * @type string ONE       passes if exactly one rule passes.
-   * @type string UNLESS    passes if the first rule passes, or if all other rules pass.
+   * @type string BETWEEN  passes if value is between min and max.
+   * @type string EQUAL    passes if value is equal to test value.
+   * @type string GREATER  passes if value is greater than test value.
+   * @type string LESS     passes if value is less than test value.
+   * @type string ONE_OF   passes if value is equal to one of a set of test values.
    */
-  const ALL = All::class;
-  const ALLWAYS = Allways::class;
-  const ANY = Any::class;
-  const AT_LEAST = AtLeast::class;
-  const AT_MOST = AtMost::class;
-  const IF = AllIf::class;
-  const NEVER = Never::class;
-  const NONE = None::class;
-  const NOT = None::class;
-  const ONE = One::class;
-  const UNLESS = AllUnless::class;
+  public const BETWEEN = Between::class;
+  public const EQUAL = Equal::class;
+  public const GREATER = Greater::class;
+  public const LESS = Less::class;
+  public const ONE_OF = OneOf::class;
+
+  /**
+   * Aliases for logical filter constructs.
+   *
+   * @type string ALL       passes if all filters pass.
+   * @type string ALWAYS    always passes.
+   * @type string ANY       passes if any filter passes.
+   * @type string AT_LEAST  passes if at least N filters pass.
+   * @type string AT_MOST   passes if at most N filters pass.
+   * @type string EXACTLY   passes if exactly N filters pass.
+   * @type string IF        passes if the first filter fails, or if all other filters pass.
+   * @type string NEVER     always fails.
+   * @type string NONE      passes if all filters fail.
+   * @type string NOT       alias of NONE.
+   * @type string ONE       passes if exactly one filter passes.
+   * @type string UNLESS    passes if the first filter passes, or if all other filters pass.
+   */
+  public const ALL = All::class;
+  public const ALWAYS = Always::class;
+  public const ANY = Any::class;
+  public const AT_LEAST = AtLeast::class;
+  public const AT_MOST = AtMost::class;
+  public const IF = AllIf::class;
+  public const NEVER = Never::class;
+  public const NONE = None::class;
+  public const NOT = None::class;
+  public const ONE = One::class;
+  public const UNLESS = AllUnless::class;
 
   /**
    * Aliases for php datatype/class/interface filters.
@@ -133,10 +146,6 @@ class Perk {
   public const MATCH = Match::class;
   public const UTF8 = Utf8::class;
 
-  /**
-   * Aliases for number filters.
-   * @see Number
-   */
 
   /**
    * Builds a filter instance from provided filters.
@@ -151,7 +160,7 @@ class Perk {
    *  - int FILTER_* constant
    *
    * @param mixed $filter     filter definitions
-   * @retun Filter            on success
+   * @return Filterable       on success
    * @throws FilterException  on failure
    */
   public static function createFilter($filter) : Filterable {
@@ -161,7 +170,7 @@ class Perk {
 
     $fqcn = is_a(reset($filter), Filterable::class, true) ?
       array_shift($filter) :
-      Filter::class;
+      IterativeFilter::class;
 
     try {
       return new $fqcn(...$filter);
@@ -190,39 +199,65 @@ class Perk {
   /**
    * Creates and applies a filter.
    *
-   * @param mixed $value         value to filter
-   * @param mixed $filter        filter definition
-   * @param mixed ...$arguments  filter args
-   * @return mixed               filtered value
-   * @throws FilterException     on failure
+   * @param mixed $value      value to filter
+   * @param mixed $filter     filter definition
+   * @param bool  $throw      throw on failure?
+   * @return mixed            filtered value
+   * @throws FilterException  on failure
    */
-  public static function filter($value, $filter, ...$arguments) {
-    return self::createFilter($filter)->apply($value, ...$arguments);
+  public static function filter($value, $filter, bool $throw = false) {
+    return self::createFilter($filter)->apply($value, $throw);
   }
 
   /**
    * Creates a filter and applies it to each of a list of values.
    *
-   * @param mixed[] $values        list of values to filter
-   * @param mixed   $filter        filter definition
-   * @param mixed   ...$arguments  filter args
-   * @return mixed[]               filtered values
-   * @throws FilterException       on failure
+   * @param mixed[] $values   list of values to filter
+   * @param mixed   $filter   filter definition
+   * @param bool    $throw    throw on failure?
+   * @return mixed[]          filtered values
+   * @throws FilterException  on failure
    */
-  public static function filterEach(array $values, $filter, ...$arguments) : array {
-    return self::createFilter($filter)->each($values, ...$arguments);
+  public static function filterEach(array $values, $filter, bool $throw = false) : array {
+    return self::createFilter($filter)->each($values, $throw);
   }
 
   /**
    * Creates a filter map and applies it to given values.
    *
-   * @param mixed[] $values      map of values to filter
-   * @param mixed[] $filters     map of filter definition
-   * @param mixed ...$arguments  filter args
-   * @return mixed[]             filtered values
-   * @throws FilterException     on failure
+   * @param mixed[] $values   map of values to filter
+   * @param mixed[] $filters  map of filter definition
+   * @param bool    $throw    throw on failure?
+   * @return mixed[]          filtered values
+   * @throws FilterException  on failure
    */
-  public static function filterMap(array $values, array $filters, ...$arguments) : array {
-    return self::createFilterMap($filters)->apply($values, ...$arguments);
+  public static function filterMap(array $values, array $filters, bool $throw = false) : array {
+    return self::createFilterMap($filters)->apply($values, $throw);
+  }
+
+  /**
+   * Creates and applies a filter, negating the result.
+   *
+   * @param mixed $value      value to filter
+   * @param mixed $filter     filter definition
+   * @param bool  $throw      throw on failure?
+   * @return mixed            filtered value
+   * @throws FilterException  on failure
+   */
+  public static function not($value, $filter, bool $throw = false) {
+    return self::createFilter($filter)->invert($value, $throw);
+  }
+
+  /**
+   * Creates a filter and applies it to each of a list of values, negating the result.
+   *
+   * @param mixed[] $values   list of values to filter
+   * @param mixed   $filter   filter definition
+   * @param bool    $throw    throw on failure?
+   * @return mixed[]          filtered values
+   * @throws FilterException  on failure
+   */
+  public static function notEach(array $values, $filter, bool $throw = false) : array {
+    return self::createFilter($filter)->invertEach($values, $throw);
   }
 }
