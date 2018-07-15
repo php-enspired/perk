@@ -31,7 +31,22 @@ use at\perk\ {
  * Does not check or cooerce data types.
  *
  * Comparison is inclusive (min <= value <= max) by default;
- * pass $inclusive = false to make comparison exclusive (min < value < max).
+ * pass `$inclusive = false` to make comparison exclusive (min < value < max).
+ *
+ * @example <code>
+ *  <?php
+ *  use at\perk\Perk;
+ *
+ *  $between = Perk::createFilter([Perk::BETWEEN, 1, 5]);
+ *  $between->apply(2);   // 2
+ *  $between->apply(5);   // 5 (inclusive by default)
+ *  $between->apply(0);   // null
+ *  $between->invert(0);  // 0 ("not between")
+ *
+ *  $between = Perk::createFilter([Perk::BETWEEN, 1, 5, false]);
+ *  $between->apply(2);  // 2
+ *  $between->apply(5);  // null (comparison is now exclusive of min/max)
+ * </code>
  */
 class Between extends Filter {
 

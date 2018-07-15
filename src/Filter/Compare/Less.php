@@ -30,7 +30,18 @@ use at\perk\ {
  * Passes if the given value compares as less than the filter's value.
  * Does not check or cooerce data types.
  *
- * To compare as less or equal, use Greater::invert().
+ * To compare as less or equal, use `Greater::invert()`.
+ *
+ * @example <code>
+ *  <?php
+ *  use at\perk\Perk;
+ *
+ *  $less = Perk::createFilter([Perk::LESS, 5]);
+ *  $less->apply(0);   // 0
+ *  $less->apply(7);   // null
+ *  $less->apply(5);   // null
+ *  $less->invert(5);  // 5 ("not less than")
+ * </code>
  */
 class Less extends Filter {
 

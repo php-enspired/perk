@@ -30,7 +30,22 @@ use at\perk\ {
  * Passes if the given value compares as equal to filter's value.
  * Does not cooerce data types.
  *
- * Comparison is loose (==) by default; pass $strict = true to make comparison strict (===).
+ * Comparison is loose (==) by default; pass `$strict = true` to make comparison strict (===).
+ *
+ * @example <code>
+ *  <?php
+ *  use at\perk\Perk;
+ *
+ *  $equal = Perk::createFilter([Perk::EQUAL, 1]);
+ *  $equal->apply(1);    // 1
+ *  $equal->apply("1");  // "1" (loose comparison by default)
+ *  $equal->apply(2);    // null
+ *  $equal->invert(2);   // 2 ("not equal")
+ *
+ *  $equal = Perk::createFilter([Perk::EQUAL, 1, true]);
+ *  $equal->apply(1);    // 1
+ *  $equal->apply("1");  // null (comparison is now strict)
+ * </code>
  */
 class Equal extends Filter {
 

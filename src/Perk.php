@@ -43,10 +43,9 @@ use at\perk\ {
   Logic\None,
   Logic\One,
 
-  Number\FromBase,
+  Number\BaseConvert,
   Number\Modulo,
   Number\Serial,
-  Number\ToBase,
 
   Text\Ascii,
   Text\Email,
@@ -57,20 +56,17 @@ use at\perk\ {
   Text\Url,
   Text\Utf8,
 
-  Time\After,
-  Time\Around,
-  Time\At,
-  Time\Before,
-  Time\During,
+  //Time\After,
+  //Time\Around,
+  //Time\At,
+  //Time\Before,
+  //Time\During,
 
   Type\Is,
-  Type\ToArray,
-  Type\ToBool,
-  Type\ToDateTime,
-  Type\ToFloat,
-  Type\ToInt,
-  Type\ToString
+  Type\To
 };
+
+use at\util\Value;
 
 /**
  * Convenience class for accessing included filters and building custom filters.
@@ -123,19 +119,64 @@ class Perk {
   /**
    * Aliases for php datatype/class/interface filters.
    *
-   * @type string ARRAY     passes if value can be converted to array.
-   * @type string BOOL      passes if value can be converted to boolean.
-   * @type string FLOAT     passes if value can be converted to float.
-   * @type string INT       passes if value can be converted to integer.
-   * @type string IS        passes if value is of given class, type, or psuedotype.
-   * @type string STRING    passes if value can be converted to string.
+   * @type array FORCE_ARRAY   always passes; converts value to array.
+   * @type array FORCE_BOOL    always passes; converts value to boolean.
+   * @type array FORCE_FLOAT   always passes; converts value to float.
+   * @type array FORCE_INT     always passes; converts value to integer.
+   * @type array FORCE_STRING  always passes; converts value to string.
+   *
+   * @type string IS  passes if value is of given class, type, or psuedotype.
+   *
+   * @type array IS_ARRAY         passes if value is an array.
+   * @type array IS_BOOL          passes if value is a boolean.
+   * @type array IS_CALLABLE      passes if value is callable.
+   * @type array IS_COUNTABLE     passes if value is countable.
+   * @type array IS_DATETIMEABLE  pass if value can be interpreted as a datetime value.
+   * @type array IS_FLOAT         passes if value is a float.
+   * @type array IS_INT           passes if value is an integer.
+   * @type array IS_ITERABLE      passes if value is iterable.
+   * @type array IS_JSONABLE      passes if value can be safely encoded as json.
+   * @type array IS_NULL          passes if value is null.
+   * @type array IS_OBJECT        passes if value is an object.
+   * @type array IS_RESOURCE      passes if value is a resource.
+   * @type array IS_SCALAR        passes if value is scalar.
+   * @type array IS_STRING        passes if value is a string.
+   *
+   * @type array TO_ARRAY     passes if value can be converted to array.
+   * @type array TO_BOOL      passes if value can be converted to boolean.
+   * @type array TO_DATETIME  passes if value can be converted to DateTime.
+   * @type array TO_FLOAT     passes if value can be converted to float.
+   * @type array TO_INT       passes if value can be converted to integer.
+   * @type array TO_STRING    passes if value can be converted to string.
    */
-  public const ARRAY = ToArray::class;
-  public const BOOL = ToBool::class;
-  public const FLOAT = ToFloat::class;
-  public const INT = ToInt::class;
+  public const FORCE_ARRAY = [To::class, Value::ARRAY, true];
+  public const FORCE_BOOL = [To::class, Value::BOOL, true];
+  public const FORCE_FLOAT = [To::class, Value::FLOAT, true];
+  public const FORCE_INT = [To::class, Value::INT, true];
+  public const FORCE_STRING = [To::class, Value::STRING, true];
+
   public const IS = Is::class;
-  public const STRING = ToString::class;
+
+  public const IS_ARRAY = [Is::class, Value::ARRAY];
+  public const IS_BOOL = [Is::class, Value::BOOL];
+  public const IS_CALLABLE = [Is::class, Value::CALLABLE];
+  public const IS_COUNTABLE = [Is::class, Value::COUNTABLE];
+  public const IS_DATETIMEABLE = [Is::class, Value::DATETIMEABLE];
+  public const IS_FLOAT = [Is::class, Value::FLOAT];
+  public const IS_INT = [Is::class, Value::INT];
+  public const IS_ITERABLE = [Is::class, Value::ITERABLE];
+  public const IS_JSONABLE = [Is::class, Value::JSONABLE];
+  public const IS_NULL = [Is::class, Value::NULL];
+  public const IS_OBJECT = [Is::class, Value::OBJECT];
+  public const IS_RESOURCE = [Is::class, Value::RESOURCE];
+  public const IS_SCALAR = [Is::class, Value::SCALAR];
+  public const IS_STRING = [Is::class, Value::STRING];
+
+  public const TO_ARRAY = [To::class, Value::ARRAY];
+  public const TO_BOOL = [To::class, Value::BOOL];
+  public const TO_FLOAT = [To::class, Value::FLOAT];
+  public const TO_INT = [To::class, Value::INT];
+  public const TO_STRING = [To::class, Value::STRING];
 
   /**
    * Aliases for text filters.
@@ -143,6 +184,7 @@ class Perk {
    * @type string MATCH  passes if value matches given pcre.
    * @type string UTF8   passes if value can be converted+normalized as utf-8.
    */
+  public const JSON = '';
   public const MATCH = Match::class;
   public const UTF8 = Utf8::class;
 

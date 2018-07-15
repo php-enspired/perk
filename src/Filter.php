@@ -28,7 +28,14 @@ use at\perk\ {
 /**
  * Generic implementation.
  *
- * Child classes should
+ * Child classes must implement their specific filter logic in `_applyFilter()`.
+ * On success, this method returns the value that passed the filter
+ * (i.e., with any normalizations, type conversions, etc. applied).
+ * On failure, this method MUST throw a FilterException.
+ * This method MUST NOT throw any other exception, nor return any value to indicate failure.
+ *
+ * Child classes may optionally override `_getInvertException()`,
+ * to provide a more meaningful FilterException for when `invert()` fails.
  */
 abstract class Filter implements Filterable {
 

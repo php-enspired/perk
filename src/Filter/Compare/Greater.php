@@ -30,7 +30,18 @@ use at\perk\ {
  * Passes if the given value compares as greater than the filter's value.
  * Does not check or cooerce data types.
  *
- * To compare as greater or equal, use Less::invert().
+ * To compare as greater or equal, use `Less::invert()`.
+ *
+ * @example <code>
+ *  <?php
+ *  use at\perk\Perk;
+ *
+ *  $greater = Perk::createFilter([Perk::GREATER, 5]);
+ *  $greater->apply(7);   // 7
+ *  $greater->apply(0);   // null
+ *  $greater->apply(5);   // null
+ *  $greater->invert(5);  // 5 ("not greater than")
+ * </code>
  */
 class Greater extends Filter {
 

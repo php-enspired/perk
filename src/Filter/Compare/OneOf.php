@@ -30,7 +30,22 @@ use at\perk\ {
  * Passes if the given value compares as equal to one of the filter's values.
  * Does not cooerce data types.
  *
- * Comparison is loose (==) by default; pass $strict = true to make comparison strict (===).
+ * Comparison is loose (==) by default; pass `$strict = true` to make comparison strict (===).
+ *
+ * @example <code>
+ *  <?php
+ *  use at\perk\Perk;
+ *
+ *  $oneOf = Perk::createFilter([Perk::ONE_OF, [1, 2, 3]]);
+ *  $oneOf->apply(1);    // 1
+ *  $oneOf->apply("2");  // "2" (loose comparison by default)
+ *  $oneOf->apply(5);    // null
+ *  $oneOf->invert(5);   // 5 ("not one of")
+ *
+ *  $oneOf = Perk::createFilter([Perk::ONE_OF, [1, 2, 3], true]);
+ *  $oneOf->apply(1);    // 1
+ *  $oneOf->apply("2");  // null (comparison is now strict)
+ * </code>
  */
 class OneOf extends Filter {
 
