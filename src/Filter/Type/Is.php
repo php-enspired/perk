@@ -41,12 +41,12 @@ use at\util\Value;
  *  <?php
  *  use at\perk\Perk;
  *
- *  $is = Perk::createFilter([Perk::IS_INT]);
+ *  $is = Perk::createFilter(Perk::IS_INT);
  *  $is->apply(1);     // 1
  *  $is->apply("1");   // null (comparison is always strict)
  *  $is->invert("1");  // "1" ("is not")
  *
- *  $is = Perk::createFilter([Perk::IS_ITERABLE]);
+ *  $is = Perk::createFilter(Perk::IS_ITERABLE);
  *  $is->apply([]);                 // []
  *  $is->apply(new ArrayIterator);  // ArrayIterator instance
  *  $is->apply("hello");            // null
@@ -69,27 +69,27 @@ class Is extends Filter {
   protected $_type;
 
   /**
-   * @param mixed $compare  type/pseudotype/class to compare against
+   * @param mixed $type  type/pseudotype/class to compare against
    */
-  public function __construct($compare) {
-    if (! is_string($compare)) {
-      $compare = Value::type($compare);
+  public function __construct($type) {
+    if (! is_string($type)) {
+      $type = Value::type($type);
     }
 
-    $this->_compare = $compare;
+    $this->_type = $type;
   }
 
   /**
    * {@inheritDoc}
    */
   protected function _applyFilter($value) {
-    if (Value::is($value, $this->_compare)) {
+    if (Value::is($value, $this->_type)) {
       return $value;
     }
 
     throw new TypeException(
       TypeException::IS_NOT,
-      ['compare' => $this->_compare, 'value' => $value]
+      ['compare' => $this->_type, 'value' => $value]
     );
   }
 
@@ -99,7 +99,7 @@ class Is extends Filter {
   protected function _getInvertException($value) : FilterException {
     return new TypeException(
       TypeException::IS,
-      ['compare' => $this->_compare, 'value' => $value]
+      ['compare' => $this->_type, 'value' => $value]
     );
   }
 }
