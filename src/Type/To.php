@@ -28,7 +28,7 @@ use Countable,
 use at\perk\ {
   Filter,
   FilterException,
-  Filter\Compare\ComparisonException
+  Filter\Type\TypeException
 };
 
 use at\util\Value;
@@ -38,48 +38,74 @@ use at\util\Value;
  *
  * This is only possible between certain data types.
  * Invalid conversions can be forced, but be aware this can often result in meaningless data.
- * Inverting (negating) conversion makes no sense, so will always throw.
- *  - arrays:
- *    - convert to: -
- *    - force to: -
- *  - booleans:
- *    - convert to: -
- *    - force to: array [bool], int 1|0, string "true"|"false"
- *  - floats:
- *    - convert to: int, string
- *    - force to: array [float], bool (true if nonzero), int (truncated)
- *  - integers:
- *    - convert to: float, string
- *    - force to: array [int], bool (true if nonzero)
- *  - strings:
- *    - convert to: bool, float, int
- *    - force to:
- *      array [string], bool, float, int
+ * Inverting (negating) a conversion makes no sense, and so will always throw.
  *
  * @example <code>
  *  <?php
  *  use at\perk\Perk;
  *
- *  $to = Perk::createFilter(Perk::TO_INT);
- *  $to->apply(3);            // 3
- *  $to->apply("3");          // 3
- *  $to->apply("3 wishes")    // null
- *  $to->invert("3 wishes");  // throws FilterException::NO_INVERSION
- *
- *  $force = Perk::createFilter(Perk::FORCE_INT);
- *  $force->apply("3 wishes");  // 0
- *
  *  $to = Perk::createFilter(Perk::TO_ARRAY);
  *  $to->apply([]);                 // []
  *  $to->apply(new ArrayIterator);  // []
  *  $to->apply("hello");            // null
- *  $to->invert("hello");           // throws FilterException::NO_INVERSION
+ *  $to->invert("hello");           // throws TypeException::INVERT_DISALLOWED
  *
  *  $force = Perk::createFilter(Perk::FORCE_ARRAY);
  *  $force->apply("hello");  // ["hello"]
+ *
+ *  $to = Perk::createFilter(Perk::TO_BOOL);
+ *  $to->apply(true);   // true
+ *  $to->apply("yes");  // true
+ *  $to->apply(1);      // true
+ *  $to->apply("no");   // false
+ *  $to->apply(0);      // false
+ *  $to->apply(42)      // null
+ *  $to->invert("42");  // throws TypeException::INVERT_DISALLOWED
+ *
+ *  $force = Perk::createFilter(Perk::FORCE_BOOL);
+ *  $to->apply(42)  // false
+ *
+ *  $to = Perk::createFilter(Perk::TO_FLOAT);
+ *  $to->apply(3.5);            // 3.5
+ *  $to->apply("3.5");          // 3.5
+ *  $to->apply("3.5 wishes")    // null
+ *  $to->invert("3.5 wishes");  // throws TypeException::INVERT_DISALLOWED
+ *
+ *  $force = Perk::createFilter(Perk::FORCE_INT);
+ *  $force->apply("3.5 wishes");               // 3.5
+ *  $force->apply("three and a half wishes");  // 0.0
+ *
+ *  $to = Perk::createFilter(Perk::TO_INT);
+ *  $to->apply(3);            // 3
+ *  $to->apply("3");          // 3
+ *  $to->apply("3 wishes")    // null
+ *  $to->invert("3 wishes");  // throws TypeException::INVERT_DISALLOWED
+ *
+ *  $force = Perk::createFilter(Perk::FORCE_INT);
+ *  $force->apply("3 wishes");      // 3
+ *  $force->apply("three wishes");  // 0
+ *
+ *  $to = Perk::createFilter(Perk::TO_STRING);
+ *  $to->apply(3);      // "3"
+ *  $to->apply(3.5);    // "3.5"
+ *  $to->apply(false);  // "false"
+ *  $to->apply([]);     // null
+ *  $to->invert([]);    // throws TypeException::INVERT_DISALLOWED
+ *
+ *  $force = Perk::createFilter(Perk::FORCE_STRING);
+ *  $force->apply([]);  // ""
  * </code>
  */
 class To extends Filter {
+
+  /** @type string[]  supported type:conversion method map. */
+  protected const _TO = [
+    Value::ARRAY => '_toArray',
+    Value::BOOL => '_toBoolean',
+    Value::FLOAT => '_toFloat',
+    Value::INT => '_toInteger',
+    Value::STRING => '_toString'
+  ];
 
   /** @type string  type/pseudotype/classname to compare against. */
   protected $_type;
@@ -92,9 +118,9 @@ class To extends Filter {
    * @param bool  $force  force conversion?
    */
   public function __construct($type, bool $force = false) {
-    if (! method_exists($this, "_to{$type}")) {
-      throw new FilterException(
-        FilterException::UNSUPPORTED_CONVERSION,
+    if (! isset(self::_TO[$type])) {
+      throw new TypeException(
+        TypeException::UNSUPPORTED_CONVERSION,
         ['type' => $type]
       );
     }
@@ -111,7 +137,15 @@ class To extends Filter {
       return $value;
     }
 
-    return $this->{"_to{$type}"}($value);
+    $filtered = $this->{self::_TO[$this->_type]}($value);
+    if ($filtered !== null) {
+      return $filtered;
+    }
+
+    throw new TypeException(
+      TypeException::INCONVERTABLE,
+      ['from' => Value::type($value), 'to' => $this->_type, 'force' => $this->_force]
+    );
   }
 
   /**
@@ -120,7 +154,7 @@ class To extends Filter {
    */
   public function invert($value, bool $throw = false) : FilterException {
     if ($throw) {
-      return new FilterException(FilterException::NO_INVERSION);
+      return new TypeException(TypeException::INVERT_DISALLOWED);
     }
 
     return null;
@@ -131,21 +165,14 @@ class To extends Filter {
    *
    * @param mixed $value      the value to convert
    * @return array            on success
-   * @throws FilterException  on failure
+   * @throws TypeException  on failure
    */
   protected function _toArray($value) : array {
     if (Value::is($value, Value::ITERABLE)) {
       return iterator_to_array($value);
     }
 
-    if ($this->_force) {
-      return [$value];
-    }
-
-    throw new FilterException(
-      FilterException::INCONVERTABLE,
-      ['from' => Value::type($value), 'to' => $this->_type, 'force' => $this->_force]
-    );
+    return $this->_force ? [$value] : null;
   }
 
   /**
@@ -153,21 +180,13 @@ class To extends Filter {
    *
    * @param mixed $value      the value to convert
    * @return bool             on success
-   * @throws FilterException  on failure
+   * @throws TypeException  on failure
    */
   protected function _toBoolean($value) : bool {
-    $filtered = filter_var(
+    return filter_var(
       $value,
       FILTER_VALIDATE_BOOLEAN,
       $this->_force ? 0 : FILTER_NULL_ON_FAILURE
-    );
-    if (is_bool($filtered)) {
-      return $filtered;
-    }
-
-    throw new FilterException(
-      FilterException::INCONVERTABLE,
-      ['from' => Value::type($value), 'to' => $this->_type, 'force' => $this->_force]
     );
   }
 
@@ -176,26 +195,14 @@ class To extends Filter {
    *
    * @param mixed $value      the value to convert
    * @return float            on success
-   * @throws FilterException  on failure
+   * @throws TypeException  on failure
    */
   protected function _toFloat($value) : float {
-    $filtered = $value;
-    if ($this->_force) {
-      $filtered = filter_var($filtered, FILTER_SANITIZE_NUMBER_FLOAT);
-    }
-    $filtered = filter_var($filtered, FILTER_VALIDATE_FLOAT);
-    if (is_float($filtered)) {
-      return $filtered;
-    }
-
-    if ($this->_force) {
-      return 0.0;
-    }
-
-    throw new FilterException(
-      FilterException::INCONVERTABLE,
-      ['from' => Value::type($value), 'to' => $this->_type, 'force' => $this->_force]
-    );
+    return filter_var(
+      $this->_force ? filter_var($value, FILTER_SANITIZE_NUMBER_FLOAT) : $value,
+      FILTER_VALIDATE_FLOAT,
+      FILTER_NULL_ON_FAILURE
+    ) ?? ($this->_force ? 0.0 : null);
   }
 
   /**
@@ -203,26 +210,14 @@ class To extends Filter {
    *
    * @param mixed $value      the value to convert
    * @return int              on success
-   * @throws FilterException  on failure
+   * @throws TypeException  on failure
    */
   protected function _toInteger($value) : int {
-    $filtered = $value;
-    if ($this->_force) {
-      $filtered = filter_var($filtered, FILTER_SANITIZE_NUMBER_INT);
-    }
-    $filtered = filter_var($filtered, FILTER_VALIDATE_INT);
-    if (is_int($filtered)) {
-      return $filtered;
-    }
-
-    if ($this->_force) {
-      return 0;
-    }
-
-    throw new FilterException(
-      FilterException::INCONVERTABLE,
-      ['from' => Value::type($value), 'to' => $this->_type, 'force' => $this->_force]
-    );
+    return filter_var(
+      $this->_force ? filter_var($value, FILTER_SANITIZE_NUMBER_INT) : $value,
+      FILTER_VALIDATE_INT,
+      FILTER_NULL_ON_FAILURE
+    ) ?? ($this->_force ? 0 : null);
   }
 
   /**
@@ -230,7 +225,7 @@ class To extends Filter {
    *
    * @param mixed $value      the value to convert
    * @return string           on success
-   * @throws FilterException  on failure
+   * @throws TypeException  on failure
    */
   protected function _toString($value) : string {
     $type = Value::type($value);
@@ -240,15 +235,11 @@ class To extends Filter {
       case Value::FLOAT:
       case Value::INT:
         return "{$value}";
+      default:
+        if (method_exists($value, '__toString')) {
+          return $value->__toString();
+        }
+        return $this->_force ? '' : null;
     }
-
-    if (method_exists($value, '__toString')) {
-      return $value->__toString();
-    }
-
-    throw new FilterException(
-      FilterException::INCONVERTABLE,
-      ['from' => Value::type($value), 'to' => $this->_type, 'force' => $this->_force]
-    );
   }
 }

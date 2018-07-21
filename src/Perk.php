@@ -31,8 +31,6 @@ use at\perk\ {
 
   Filterable,
   FilterException,
-  FilterMap,
-  IterativeFilter,
 
   Logic\All,
   Logic\AllIf,
@@ -41,8 +39,10 @@ use at\perk\ {
   Logic\Any,
   Logic\AtLeast,
   Logic\AtMost,
+  Logic\Map,
   Logic\Never,
   Logic\None,
+  Logic\Not,
   Logic\One,
 
   //Number\BaseConvert,
@@ -115,7 +115,7 @@ class Perk {
   public const IF = AllIf::class;
   public const NEVER = Never::class;
   public const NONE = None::class;
-  public const NOT = None::class;
+  public const NOT = Not::class;
   public const ONE = One::class;
   public const UNLESS = AllUnless::class;
 
@@ -215,7 +215,7 @@ class Perk {
 
     $fqcn = is_a(reset($filter), Filterable::class, true) ?
       array_shift($filter) :
-      IterativeFilter::class;
+      All::class;
 
     try {
       return new $fqcn(...$filter);
@@ -234,11 +234,11 @@ class Perk {
    * Builds a filter map instance from provided filters.
    *
    * @param mixed[] $filters  map of key:filter definition list pairs
-   * @return FilterMap        on success
+   * @return Map              on success
    * @throws FilterException  on failure
    */
-  public static function createFilterMap(array $filters) : FilterMap {
-    return new FilterMap(...$filters);
+  public static function createMap(array $filters) : Map {
+    return new Map(...$filters);
   }
 
   /**
@@ -277,7 +277,7 @@ class Perk {
    * @throws FilterException  on failure
    */
   public static function filterMap(array $values, array $filters, bool $throw = false) : array {
-    return self::createFilterMap($filters)->apply($values, $throw);
+    return self::createMap($filters)->apply($values, $throw);
   }
 
   /**

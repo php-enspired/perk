@@ -29,7 +29,7 @@ use at\perk\ {
 /**
  * Composite filters which can be mapped (by name) to a collection of values.
  */
-class FilterMap extends Filter {
+class Map extends LogicFilter {
 
   /** @type array[]  list of filter definitions. */
   protected $_filters = [];

@@ -28,7 +28,7 @@ use Countable,
 use at\perk\ {
   Filter,
   FilterException,
-  Filter\Compare\ComparisonException
+  Filter\Type\TypeException
 };
 
 use at\util\Value;
